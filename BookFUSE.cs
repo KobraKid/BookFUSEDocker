@@ -1,0 +1,204 @@
+﻿using System.IO;
+using System.Text;
+using Tmds.Fuse;
+using Tmds.Linux;
+using static BookFUSE.CalibreLibrary;
+using static Tmds.Linux.LibC;
+
+namespace BookFUSE
+{
+    class BookFUSEFileSystem(CalibreLibrary library) : FuseFileSystemBase
+    {
+        private readonly CalibreLibrary _Library = library;
+
+        public override int GetAttr(ReadOnlySpan<byte> path, ref stat stat, FuseFileInfoRef fiRef)
+        {
+            var pathString = Encoding.UTF8.GetString(path.ToArray());
+            if (_Library.GetLibrary(pathString, out var library))
+            {
+                if (library.GetSeries(pathString, out var series))
+                {
+                    if (series.GetBook(pathString, out var book))
+                    {
+                        stat.st_mode = S_IFREG | 0b100_100_100; // r--r--r--
+                        stat.st_nlink = 1;
+                        stat.st_size = book.FileSize;
+                        stat.st_ctim = book.Created.ToTimespec();
+                        stat.st_atim = book.Modified.ToTimespec();
+                        stat.st_mtim = book.Modified.ToTimespec();
+                        return 0;
+                    }
+                    else if (pathString == Path.Join("/", library.Name, series.Name))
+                    {
+                        stat.st_mode = S_IFDIR | 0b101_101_101; // r-xr-xr-x
+                        stat.st_nlink = 2 + (ulong)series.Books.Count;
+                        return 0;
+                    }
+                }
+                else if (pathString == Path.Join("/", library.Name))
+                {
+                    stat.st_mode = S_IFDIR | 0b101_101_101; // r-xr-xr-x
+                    stat.st_nlink = 2 + (ulong)library.SeriesList.Count;
+                    return 0;
+                }
+            }
+            else if (path.SequenceEqual(RootPath))
+            {
+                stat.st_mode = S_IFDIR | 0b101_101_101; // r-xr-xr-x
+                stat.st_nlink = 2 + (ulong)_Library.Libraries.Count;
+                return 0;
+            }
+            return -ENOENT;
+        }
+
+        public override int Open(ReadOnlySpan<byte> path, ref FuseFileInfo fi)
+        {
+            var pathString = Encoding.UTF8.GetString(path.ToArray());
+            if ((fi.flags & O_ACCMODE) != O_RDONLY)
+            {
+                return -EACCES; // Only read access is allowed
+            }
+
+            if (_Library.GetLibrary(pathString, out var library))
+            {
+                if (library.GetSeries(pathString, out var series))
+                {
+                    if (series.GetBook(pathString, out _))
+                    {
+                        return 0;
+                    }
+                }
+            }
+            return -ENOENT;
+        }
+
+        public override int OpenDir(ReadOnlySpan<byte> path, ref FuseFileInfo fi)
+        {
+            var pathString = Encoding.UTF8.GetString(path.ToArray());
+            if (_Library.GetLibrary(pathString, out var library))
+            {
+                if (library.GetSeries(pathString, out var series))
+                {
+                    if (series.GetBook(pathString, out _))
+                    {
+                        return -ENOENT;
+                    }
+                    else if (pathString == Path.Join("/", library.Name, series.Name))
+                    {
+                        return 0;
+                    }
+                }
+                else if (pathString == Path.Join("/", library.Name))
+                {
+                    return 0;
+                }
+            }
+            else if (path.SequenceEqual(RootPath))
+            {
+                return 0;
+            }
+            return -ENOENT;
+        }
+
+        public override int Read(ReadOnlySpan<byte> path, ulong offset, Span<byte> buffer, ref FuseFileInfo fi)
+        {
+            var pathString = Encoding.UTF8.GetString(path.ToArray());
+            if (_Library.GetLibrary(pathString, out var library))
+            {
+                if (library.GetSeries(pathString, out var series))
+                {
+                    if (series.GetBook(pathString, out var book))
+                    {
+                        FileStream stream = new(Path.Join(_Library.Root, library.Name, book.Path, book.PhysicalName),
+                            FileMode.Open, FileAccess.Read, FileShare.ReadWrite);
+                        if ((ulong)stream.Length >= offset)
+                        {
+                            int length = (int)Math.Min(stream.Length - (int)offset, buffer.Length);
+                            stream.Seek((long)offset, SeekOrigin.Begin);
+                            byte[] tempBuffer = new byte[length];
+                            int bytesRead = stream.Read(tempBuffer, 0, length);
+                            if (bytesRead > 0)
+                            {
+                                tempBuffer.AsSpan(0, bytesRead).CopyTo(buffer);
+                                return bytesRead;
+                            }
+                        }
+                    }
+                }
+            }
+            return 0;
+        }
+
+        public override int ReadDir(ReadOnlySpan<byte> path, ulong offset, ReadDirFlags flags, DirectoryContent content, ref FuseFileInfo fi)
+        {
+            var pathString = Encoding.UTF8.GetString(path.ToArray());
+            content.AddEntry(".");
+            content.AddEntry("..");
+            if (_Library.GetLibrary(pathString, out var library))
+            {
+                if (library.GetSeries(pathString, out var series))
+                {
+                    if (series.GetBook(pathString, out _))
+                    {
+                        return -ENOENT;
+                    }
+                    else if (pathString == Path.Join("/", library.Name, series.Name))
+                    {
+                        foreach (var b in series.Books) { content.AddEntry(b.VirtualName); }
+                        return 0;
+                    }
+                }
+                else if (pathString == Path.Join("/", library.Name))
+                {
+                    foreach (var s in library.SeriesList) { content.AddEntry(s.Name); }
+                    return 0;
+                }
+            }
+            else if (path.SequenceEqual(RootPath))
+            {
+                foreach (var l in _Library.Libraries) { content.AddEntry(l.Name); }
+                return 0;
+            }
+            return -ENOENT;
+        }
+    }
+
+    public class BookFUSE
+    {
+        /// <summary>
+        /// A simple FUSE file system for accessing a calibre library.
+        /// </summary>
+        /// <param name="args">Arguments: [0] - path to the calibre library, [1] - mount point.</param>
+        /// <returns>An asynchronous task that runs the FUSE file system.</returns>
+        static async Task Main(string[] args)
+        {
+            if (!Fuse.CheckDependencies())
+            {
+                return;
+            }
+            if (args.Length != 2)
+            {
+                Console.WriteLine("Usage: BookFUSE <library_path> <mount_point>");
+                return;
+            }
+            CalibreLibrary library = new(args[0]);
+            library.Init();
+            BookFUSE.Log(LogLevel.Information, "Main", "Done loading");
+            using var mount = Fuse.Mount(args[1], new BookFUSEFileSystem(library), new MountOptions() { AllowOther = true });
+            await mount.WaitForUnmountAsync();
+        }
+
+        public enum LogLevel
+        {
+            Debug,
+            Information,
+            Warning,
+            Error
+        }
+
+        public static void Log(LogLevel level, string source, string message)
+        {
+            Console.WriteLine($"[BookFUSE] [{DateTime.Now.ToLongTimeString()}] [{level}] [{source}] {message}");
+        }
+    }
+}

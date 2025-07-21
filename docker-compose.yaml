@@ -1,0 +1,19 @@
+services:
+  kavita_bookfuse:
+    # Use the image name you built
+    image: kavita_bookfuse
+    container_name: kavita_bookfuse
+    build:
+      context: .
+    volumes:
+      # Change this to your local calibre library path
+      - "C:/Path/To/Calibre:/calibre"
+      # Add additional volumes as needed for Kavita configuration
+      - ./data:/kavita/config
+    devices:
+      - /dev/fuse:/dev/fuse
+    cap_add:
+      - SYS_ADMIN
+    ports:
+      - "5500:5000"
+      - "5501:5001"

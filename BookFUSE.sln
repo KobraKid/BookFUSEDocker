@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.14.36202.13 d17.14
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BookFUSE", "BookFUSE.csproj", "{1E3A2D25-E6F9-E0E0-B879-92FB268499F0}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{1E3A2D25-E6F9-E0E0-B879-92FB268499F0}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1E3A2D25-E6F9-E0E0-B879-92FB268499F0}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1E3A2D25-E6F9-E0E0-B879-92FB268499F0}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1E3A2D25-E6F9-E0E0-B879-92FB268499F0}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {A6A41132-38C5-4613-92E9-B0C284CB9338}
+	EndGlobalSection
+EndGlobal
