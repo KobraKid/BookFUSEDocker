@@ -15,5 +15,5 @@ services:
     cap_add:
       - SYS_ADMIN
     ports:
-      - "5500:5000"
-      - "5501:5001"
+      - "5000:5000"
+    restart: unless-stopped
