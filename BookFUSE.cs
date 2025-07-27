@@ -1,8 +1,6 @@
-﻿using System.IO;
-using System.Text;
+﻿using System.Text;
 using Tmds.Fuse;
 using Tmds.Linux;
-using static BookFUSE.CalibreLibrary;
 using static Tmds.Linux.LibC;
 
 namespace BookFUSE
@@ -20,7 +18,7 @@ namespace BookFUSE
                 {
                     if (series.GetBook(pathString, out var book))
                     {
-                        stat.st_mode = S_IFREG | 0b100_100_100; // r--r--r--
+                        stat.st_mode = S_IFREG | 0b110_110_110; // rw-rw-rw-
                         stat.st_nlink = 1;
                         stat.st_size = book.FileSize;
                         stat.st_ctim = book.Created.ToTimespec();
@@ -184,7 +182,7 @@ namespace BookFUSE
             CalibreLibrary library = new(args[0]);
             library.Init();
             BookFUSE.Log(LogLevel.Information, "Main", "Done loading");
-            using var mount = Fuse.Mount(args[1], new BookFUSEFileSystem(library), new MountOptions() { AllowOther = true });
+            using var mount = Fuse.Mount(args[1], new BookFUSEFileSystem(library));
             await mount.WaitForUnmountAsync();
         }
 

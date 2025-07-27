@@ -92,7 +92,7 @@ namespace BookFUSE
                         {
                             series = new(seriesName, []);
                             seriesList[seriesName] = series;
-                            BookFUSE.Log(BookFUSE.LogLevel.Information, "CalibreLibrary.LoadLibraryInfo", "\tLoading series " + seriesName);
+                            BookFUSE.Log(BookFUSE.LogLevel.Information, "CalibreLibrary.LoadLibraryInfo", "Loading series " + seriesName);
                         }
                         if (!series.Books.Any(book => (book.Title == title) && (book.Format == format)))
                         {

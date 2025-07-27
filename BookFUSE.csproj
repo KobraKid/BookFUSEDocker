@@ -9,13 +9,7 @@
 
   <ItemGroup>
     <PackageReference Include="System.Data.SQLite" Version="1.0.119" />
-    <PackageReference Include="Tmds.LibC" Version="0.5.0" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Reference Include="Tmds.Fuse">
-      <HintPath>lib\Tmds.Fuse.dll</HintPath>
-    </Reference>
+    <PackageReference Include="Tmds.Fuse" Version="0.1.0-190711-50" />
   </ItemGroup>
 
 </Project>

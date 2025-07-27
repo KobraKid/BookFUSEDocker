@@ -3,6 +3,8 @@ FROM mcr.microsoft.com/dotnet/sdk:9.0@sha256:86fe223b90220ec8607652914b1d7dc56fc
 WORKDIR /App
 # Copy all project files
 COPY . ./
+# Add Tmds.Fuse NuGet server
+RUN dotnet nuget add source https://www.myget.org/F/tmds/api/v3/index.json
 # Restore dependencies
 RUN dotnet restore
 # Publish BookFUSE for release
