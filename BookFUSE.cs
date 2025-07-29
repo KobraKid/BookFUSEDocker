@@ -5,9 +5,65 @@ using static Tmds.Linux.LibC;
 
 namespace BookFUSE
 {
-    class BookFUSEFileSystem(CalibreLibrary library) : FuseFileSystemBase
+    class BookFUSEFileSystem : FuseFileSystemBase
     {
-        private readonly CalibreLibrary _Library = library;
+        private readonly CalibreLibrary _Library;
+
+        /// <summary>
+        /// The file system watcher instance that monitors changes in the calibre library directory.
+        /// </summary>
+        private readonly FileSystemWatcher? _Watcher;
+
+        /// <summary>
+        /// A timer used to delay the re-initialization of the library after file system changes.
+        /// </summary>
+        private Timer? _timer;
+
+        /// <summary>
+        /// A lock object to synchronize access to the timer and library re-initialization.
+        /// </summary>
+        private readonly Lock _lock = new();
+
+        /// <summary>
+        /// Represents a FUSE file system which translates a calibre library to a Kavita library.
+        /// </summary>
+        /// <param name="library">The calibre library to be represented by this FUSE file system.</param>
+        public BookFUSEFileSystem(CalibreLibrary library) {
+            _Library = library;
+            _Watcher = new(_Library.Root)
+            {
+                NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size,
+                Filter = "metadata.db",
+                IncludeSubdirectories = true,
+                EnableRaisingEvents = true
+            };
+            _Watcher.Changed += LibraryChanged;
+        }
+
+        /// <summary>
+        /// Handles changes to the library by responding to file system events.
+        /// </summary>
+        /// <remarks>This method is triggered when a file system change is detected. It ensures that the
+        /// library is re-initialized after a short delay to handle potential bursts of file system events.</remarks>
+        /// <param name="sender">The source of the event, typically the file system watcher.</param>
+        /// <param name="e">The event data containing information about the file system change.</param>
+        private void LibraryChanged(object sender, FileSystemEventArgs e)
+        {
+            BookFUSE.Log(BookFUSE.LogLevel.Information, "LibraryChanged", $"Library changed: {e.FullPath}");
+            lock (_lock)
+            {
+                _timer?.Dispose();
+                _timer = new Timer(_ =>
+                {
+                    lock (_lock)
+                    {
+                        _timer?.Dispose();
+                        _timer = null;
+                    }
+                    _Library.Init();
+                }, null, 500, Timeout.Infinite);
+            }
+        }
 
         public override int GetAttr(ReadOnlySpan<byte> path, ref stat stat, FuseFileInfoRef fiRef)
         {
@@ -181,7 +237,7 @@ namespace BookFUSE
             }
             CalibreLibrary library = new(args[0]);
             library.Init();
-            BookFUSE.Log(LogLevel.Information, "Main", "Done loading");
+            Log(LogLevel.Information, "Main", "Done loading");
             using var mount = Fuse.Mount(args[1], new BookFUSEFileSystem(library));
             await mount.WaitForUnmountAsync();
         }
