@@ -2,8 +2,6 @@ name: Automated Kavita Update and Image Build
 
 on:
   workflow_dispatch: # Allows manual trigger
-  schedule:
-    - cron: '0 0 * * *'
 
 env:
   REGISTRY: ghcr.io
