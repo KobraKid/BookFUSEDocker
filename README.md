@@ -22,28 +22,7 @@ BookFUSE is a FUSE-based virtual filesystem for Windows that exposes a [calibre]
 
 ## Usage
 
-Create a [`docker-compose.yaml`](docker-compose.yaml) file and run `docker compose up -d`.
-
-Example `docker-compose.yaml` file:
-
-```yaml
-services:
-  kavita_bookfuse:
-    image: ghcr.io/kobrakid/bookfuse:latest
-    container_name: kavita
-    volumes:
-      - "C:/Users/KobraKid/Calibre:/calibre"
-      - "C:/Users/KobraKid/Kavita/data":/kavita/config
-    environment:
-        - TZ=America/Chicago
-    devices:
-      - /dev/fuse:/dev/fuse
-    cap_add:
-      - SYS_ADMIN
-    ports:
-      - "5000:5000"
-    restart: unless-stopped
-```
+Create a docker-compose.yaml file and run `docker compose up -d`. [`docker-compose.yaml`](See example file here.)
 
 ## License
 
