@@ -8,11 +8,11 @@ on:
       - 'v*.*.*'
   release:
     types: [published]
-  workflow_dispatch: # Allows manual trigger from GitHub UI
+  workflow_dispatch:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME: bookfuse
 
 jobs:
   build-and-push:
@@ -28,6 +28,12 @@ jobs:
         with:
           submodules: recursive # Recursively fetches Tmds.Fuse
           fetch-depth: 0
+
+      - name: Lowercase Owner Name
+        id: owner
+        run: echo "OWNER_LC=${OWNER,,}" >> $GITHUB_ENV
+        env:
+          OWNER: '${{ github.repository_owner }}'
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -47,7 +53,7 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
+          images: ${{ env.REGISTRY }}/${{ env.OWNER_LC }}/${{ env.IMAGE_NAME }}
           tags: |
             type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
             type=semver,pattern={{version}}
