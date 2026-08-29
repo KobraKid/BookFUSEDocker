@@ -238,7 +238,8 @@ namespace BookFUSE
             CalibreLibrary library = new(args[0]);
             library.Init();
             Log(LogLevel.Information, "Main", "Done loading");
-            using var mount = Fuse.Mount(args[1], new BookFUSEFileSystem(library));
+            using var mount = Fuse.Mount(args[1], new BookFUSEFileSystem(library), new MountOptions() { AllowOther = true });
+            AppDomain.CurrentDomain.ProcessExit += (s, e) => { mount.Dispose(); };
             await mount.WaitForUnmountAsync();
         }
 

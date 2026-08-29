@@ -1,0 +1,3 @@
+[submodule "vendor/Tmds.Fuse"]
+	path = vendor/Tmds.Fuse
+	url = https://github.com/KobraKid/Tmds.Fuse.git

@@ -5,11 +5,27 @@
     <TargetFramework>net9.0</TargetFramework>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
 
   <ItemGroup>
+    <Compile Remove="vendor\Tmds.Fuse\samples\**" />
+    <Compile Remove="vendor\Tmds.Fuse\test\**" />
+    <EmbeddedResource Remove="vendor\Tmds.Fuse\samples\**" />
+    <EmbeddedResource Remove="vendor\Tmds.Fuse\test\**" />
+    <None Remove="vendor\Tmds.Fuse\samples\**" />
+    <None Remove="vendor\Tmds.Fuse\test\**" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="System.Data.SQLite" Version="1.0.119" />
-    <PackageReference Include="Tmds.Fuse" Version="0.1.0-190711-50" />
+    <PackageReference Include="Tmds.LibC" Version="0.5.1-g225d6d54a8" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="Tmds.Fuse">
+      <HintPath>vendor\Tmds.Fuse\src\Tmds.Fuse\bin\Debug\netstandard2.0\Tmds.Fuse.dll</HintPath>
+    </Reference>
   </ItemGroup>
 
 </Project>
