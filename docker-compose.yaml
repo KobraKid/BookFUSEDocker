@@ -1,16 +1,33 @@
 services:
-  kavita_bookfuse:
+  bookfuse:
     image: ghcr.io/kobrakid/bookfuse:latest
-    container_name: kavita_bookfuse
+    container_name: bookfuse
     volumes:
-      # Change this to your local calibre library path
-      - "C:/Path/To/Calibre:/calibre"
-      # Add additional volumes as needed for Kavita configuration
-      - ./data:/kavita/config
+      # Change this to a folder on the host machine that will be shared with both BookFUSE and Kavita
+      - "./bookfuse:/mnt/bookfuse:rshared"
     devices:
       - /dev/fuse:/dev/fuse
     cap_add:
       - SYS_ADMIN
+    security_opt:
+      - apparmor:unconfined
+    command: ["dotnet", "BookFUSE.dll", "/calibre", "/mnt/bookfuse"]
+    healthcheck:
+      test: ["CMD-SHELL", "grep -q ' /mnt/bookfuse ' /proc/mounts && ls /mnt/bookfuse > /dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+  kavita:
+    image: jvmilazz0/kavita:latest
+    container_name: kavita
+    depends_on:
+      - bookfuse
+    volumes:
+      # [Include your normal Kavita volumes]
+      # Change this to the same folder on the host machine
+      - "./bookfuse:/mnt/bookfuse:rslave"
+    environment:
+      - TZ=Your/Timezone
     ports:
       - "5000:5000"
     restart: unless-stopped

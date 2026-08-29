@@ -1,21 +1,20 @@
 # Stage 1: Build BookFUSE application
 FROM mcr.microsoft.com/dotnet/sdk:9.0@sha256:86fe223b90220ec8607652914b1d7dc56fc8ff422ca1240bb81e54c4b06509e6 AS bookfuse_build
 WORKDIR /App
+
 # Copy all project files
-COPY BookFUSELinux/*.sln ./BookFUSE/
-COPY BookFUSELinux/*.csproj ./BookFUSE/
-COPY Tmds.Fuse/src/Tmds.Fuse/*.csproj ./Tmds.Fuse/src/Tmds.Fuse/
+COPY *.csproj ./
+COPY /vendor/Tmds.Fuse/src/Tmds.Fuse/*.csproj ./vendor/Tmds.Fuse/src/Tmds.Fuse/
+
 # Add Tmds.Fuse NuGet server
 RUN dotnet nuget add source https://www.myget.org/F/tmds/api/v3/index.json
-# Restore dependencies
-RUN dotnet restore BookFUSE/BookFUSE.csproj
 
-# Copy all source code
-COPY BookFUSELinux/ ./BookFUSE/
-COPY Tmds.Fuse/ ./Tmds.Fuse/
+# Restore dependencies
+RUN dotnet restore BookFUSE.csproj
 
 # Publish BookFUSE for release
-RUN dotnet publish BookFUSE/BookFUSE.csproj -c Release -o out
+COPY . ./
+RUN dotnet publish BookFUSE.csproj -c Release -o out --no-restore
 
 # Stage 2: Final runtime image
 FROM mcr.microsoft.com/dotnet/aspnet:9.0@sha256:7ccab69cb986ab83c359552c86e9cef2b2238e7c4b75a75a7b60a3e26c1bc3cd AS final
