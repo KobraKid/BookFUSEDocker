@@ -18,6 +18,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.FileProviders.Physical" Version="10.0.12" />
     <PackageReference Include="System.Data.SQLite" Version="1.0.119" />
     <PackageReference Include="Tmds.LibC" Version="0.5.1-g225d6d54a8" />
   </ItemGroup>

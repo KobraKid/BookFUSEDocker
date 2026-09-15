@@ -1,4 +1,6 @@
-﻿using System.Text;
+﻿using Microsoft.Extensions.FileProviders;
+using Microsoft.Extensions.Primitives;
+using System.Text;
 using Tmds.Fuse;
 using Tmds.Linux;
 using static Tmds.Linux.LibC;
@@ -12,7 +14,12 @@ namespace BookFUSE
         /// <summary>
         /// The file system watcher instance that monitors changes in the calibre library directory.
         /// </summary>
-        private readonly FileSystemWatcher? _Watcher;
+        private readonly PhysicalFileProvider? _Watcher;
+
+        /// <summary>
+        /// The subscription to the change token that triggers the library re-initialization when changes are detected.
+        /// </summary>
+        private readonly IDisposable? _ChangeTokenSubscription;
 
         /// <summary>
         /// A timer used to delay the re-initialization of the library after file system changes.
@@ -30,14 +37,11 @@ namespace BookFUSE
         /// <param name="library">The calibre library to be represented by this FUSE file system.</param>
         public BookFUSEFileSystem(CalibreLibrary library) {
             _Library = library;
-            _Watcher = new(_Library.Root)
-            {
-                NotifyFilter = NotifyFilters.LastWrite | NotifyFilters.Size,
-                Filter = "metadata.db",
-                IncludeSubdirectories = true,
-                EnableRaisingEvents = true
+            _Watcher = new PhysicalFileProvider(library.Root) {
+                UsePollingFileWatcher = true,
+                UseActivePolling = true
             };
-            _Watcher.Changed += LibraryChanged;
+            _ChangeTokenSubscription = ChangeToken.OnChange(() => _Watcher.Watch("**/metadata.db*"), LibraryChanged);
         }
 
         /// <summary>
@@ -45,24 +49,50 @@ namespace BookFUSE
         /// </summary>
         /// <remarks>This method is triggered when a file system change is detected. It ensures that the
         /// library is re-initialized after a short delay to handle potential bursts of file system events.</remarks>
-        /// <param name="sender">The source of the event, typically the file system watcher.</param>
-        /// <param name="e">The event data containing information about the file system change.</param>
-        private void LibraryChanged(object sender, FileSystemEventArgs e)
+        private void LibraryChanged()
         {
-            BookFUSE.Log(BookFUSE.LogLevel.Information, "LibraryChanged", $"Library changed: {e.FullPath}");
-            lock (_lock)
+            try
+            {
+                BookFUSE.Log(BookFUSE.LogLevel.Information, "LibraryChanged", $"Library changed. Reinitializing...");
+                lock (_lock)
+                {
+                    _timer?.Dispose();
+                    _timer = new Timer(_ =>
+                    {
+                        try
+                        {
+                            lock (_lock)
+                            {
+                                _timer?.Dispose();
+                                _timer = null;
+                            }
+                            _Library.Init();
+                        }
+                        catch (Exception e)
+                        {
+                            BookFUSE.Log(BookFUSE.LogLevel.Error, "LibraryChanged", $"Error reinitializing library: {e.Message}");
+                        }
+                    }, null, 500, Timeout.Infinite);
+                }
+            }
+            catch (Exception e)
+            {
+                BookFUSE.Log(BookFUSE.LogLevel.Error, "LibraryChanged", $"Error handling file change notification: {e.Message}");
+            }
+        }
+
+        public override void Dispose()
+        {
+            _ChangeTokenSubscription?.Dispose();
+            _Watcher?.Dispose();
+
+            lock(_lock)
             {
                 _timer?.Dispose();
-                _timer = new Timer(_ =>
-                {
-                    lock (_lock)
-                    {
-                        _timer?.Dispose();
-                        _timer = null;
-                    }
-                    _Library.Init();
-                }, null, 500, Timeout.Infinite);
+                _timer = null;
             }
+
+            base.Dispose();
         }
 
         public override int GetAttr(ReadOnlySpan<byte> path, ref stat stat, FuseFileInfoRef fiRef)
