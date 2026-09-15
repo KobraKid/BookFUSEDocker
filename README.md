@@ -22,7 +22,7 @@ BookFUSE is a FUSE-based virtual filesystem for Windows that exposes a [calibre]
 
 ## Usage
 
-Create a docker-compose.yaml file and run `docker compose up -d`. [`docker-compose.yaml`](See example file here.)
+Create a docker-compose.yaml file and run `docker compose up -d`. [See exmaple `docker-compose.yaml` here](docker-compose.yaml)
 
 ## License
 

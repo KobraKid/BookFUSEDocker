@@ -3,7 +3,18 @@ services:
     image: ghcr.io/kobrakid/bookfuse:latest
     container_name: bookfuse
     volumes:
-      # Change this to a folder on the host machine that will be shared with both BookFUSE and Kavita
+      # Change this to the folder that contains your calibre library/libraries. E.g., if your calibre folder is structured like:
+      # /path/to/calibre/comics
+      # /path/to/calibre/novels
+      # /path/to/calibre/reference
+      # and each folder /comics/, /novels/, and /refence/ contains a file 'metadata.db', then you should use
+      # /path/to/calibre as your root folder. Each subfolder will be mapped to /mnt/bookfuse, e.g.,
+      # /mnt/bookfuse/comics
+      # /mnt/bookfuse/novels
+      # /mnt/bookfuse/reference
+      - "/path/to/calibre:/calibre"
+      # Change this to a folder on the host machine that will be shared with both BookFUSE and Kavita.
+      # This should just be an empty folder, it's used as a bridge between BookFUSE and Kavita.
       - "./bookfuse:/mnt/bookfuse:rshared"
     devices:
       - /dev/fuse:/dev/fuse
@@ -11,6 +22,7 @@ services:
       - SYS_ADMIN
     security_opt:
       - apparmor:unconfined
+    # Make sure the third and fourth parameters match the two volume paths you added above
     command: ["dotnet", "BookFUSE.dll", "/calibre", "/mnt/bookfuse"]
     healthcheck:
       test: ["CMD-SHELL", "grep -q ' /mnt/bookfuse ' /proc/mounts && ls /mnt/bookfuse > /dev/null"]
@@ -23,8 +35,8 @@ services:
     depends_on:
       - bookfuse
     volumes:
-      # [Include your normal Kavita volumes]
-      # Change this to the same folder on the host machine
+      # [Add any other non-calibre libraries as volumes]
+      # Change this to the same folder on the host machine.
       - "./bookfuse:/mnt/bookfuse:rslave"
     environment:
       - TZ=Your/Timezone
