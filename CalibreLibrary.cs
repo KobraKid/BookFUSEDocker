@@ -70,7 +70,7 @@ namespace BookFUSE
                     LEFT OUTER JOIN books_series_link ON books.id = books_series_link.book
                     LEFT OUTER JOIN data              ON books.id = data.book
                     LEFT OUTER JOIN series            ON books_series_link.series = series.id
-                "; // TODO - need to include books with no books_series_link.series, which is the case for standalone books
+                ";
                 command.CommandTimeout = 10;
                 try
                 {
@@ -80,20 +80,33 @@ namespace BookFUSE
                         int col = 0;
                         string title = reader.GetString(col++);
                         string author = reader.GetString(col++);
-                        double seriesIndex = reader.IsDBNull(col) ? 0 : reader.GetDouble(col++);
+                        double seriesIndex = reader.IsDBNull(col) ? 1 : reader.GetDouble(col++);
                         string path = reader.GetString(col++);
                         DateTime timestamp = reader.GetDateTime(col++);
                         DateTime lastModified = reader.GetDateTime(col++);
                         string fileName = EscapeFileName(reader.GetString(col++));
-                        string format = FormatToFileExtension(reader.GetString(col++));
-                        string seriesName = EscapeFileName(reader.IsDBNull(col) ? fileName : reader.GetString(col++));
+                        string format = reader.GetString(col++);
+                        string seriesName = EscapeFileName(reader.IsDBNull(col) ? title : reader.GetString(col++));
                         int seriesId = reader.IsDBNull(col) ? -1 : reader.GetInt32(col++);
+
+                        if (format.StartsWith("ORIGINAL")) { continue; }
+                        try
+                        {
+                            format = FormatToFileExtension(format);
+                        }
+                        catch (NotSupportedException)
+                        {
+                            BookFUSE.Log(BookFUSE.LogLevel.Warning, "CalibreLibrary.LoadLibraryInfo", "Unsupported format " + format + " for book " + title);
+                            continue;
+                        }
+
                         if (!seriesList.TryGetValue(seriesName, out Series? series))
                         {
                             series = new(seriesName, []);
                             seriesList[seriesName] = series;
                             BookFUSE.Log(BookFUSE.LogLevel.Information, "CalibreLibrary.LoadLibraryInfo", "Loading series " + seriesName);
                         }
+
                         if (!series.Books.Any(book => (book.Title == title) && (book.Format == format)))
                         {
                             FileStream stream = new(Path.Join(Root, libraryName, path, fileName + "." + format),
@@ -102,7 +115,7 @@ namespace BookFUSE
                                 FileShare.ReadWrite);
                             series.Books.Add(new Book(
                                 title, author,
-                                seriesName, seriesIndex > 10000 ? "SP" + (seriesIndex % 10000).ToString().PadLeft(2, '0') : seriesIndex.ToString().PadLeft(2, '0'),
+                                seriesName, seriesIndex > 10000 ? "SP" + (seriesIndex % 10000).ToString().PadLeft(2, '0') : "Vol " + seriesIndex.ToString().PadLeft(2, '0'),
                                 fileName, format, path,
                                 stream.Length, timestamp, lastModified));
                             stream.Dispose();
@@ -136,7 +149,6 @@ namespace BookFUSE
                 "AZW3" => "azw3",
                 "CBZ" => "cbz",
                 "EPUB" => "epub",
-                "ORIGINAL_EPUB" => "original_epub",
                 "MOBI" => "mobi",
                 "PDF" => "pdf",
                 "ZIP" => "zip",

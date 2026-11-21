@@ -283,7 +283,7 @@ namespace BookFUSE
 
         public static void Log(LogLevel level, string source, string message)
         {
-            Console.WriteLine($"[BookFUSE] [{DateTime.Now.ToLongTimeString()}] [{level}] [{source}] {message}");
+            Console.WriteLine($"[BookFUSE] [{DateTime.Now:T}] [{level}] [{source}] {message}");
         }
     }
 }
